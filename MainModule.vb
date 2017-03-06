@@ -450,7 +450,7 @@ Module MainModule
                         ' Procesar mensajes de notificaciones sin responder por templates
                         If sActualizaMensajes = "S" Then UpdateWebMailNotificacionesSinResponderSgda(nTemplateID, nAppProcesarDias)
 
-                    
+
                 End Select
 
                 ' ACTUALIZAR CORRIDA POR TEMPLATES
@@ -589,7 +589,7 @@ Module MainModule
                         ' Procesar mensajes de notificaciones sin responder por templates
                         If sActualizaMensajes = "S" Then UpdateWebMailNotificacionesSinResponder(nTemplateID, nAppProcesarDias)
 
-                   
+
                 End Select
 
                 ' ACTUALIZAR CORRIDA POR TEMPLATES
@@ -902,7 +902,9 @@ Module MainModule
                             bSendEmail = False
                         End If
                     Case 3, 2    'paquete sin factura aduana
-                        ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby)
+                        If ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby) = False Then
+                            bSendEmail = False
+                        End If
                     Case Else
                         ' Do nothing
                 End Select
@@ -957,6 +959,12 @@ Module MainModule
 
         EmailBody = EmailBody.Replace("%RowId%", sKey)
 
+        If sKey <> "" Then
+            bReturn = True
+        End If
+
+        Return bReturn
+
 
     End Function
 
@@ -992,7 +1000,7 @@ Module MainModule
 
             dt2 = db.ewGetDataSet(sSql2).Tables(0)
 
-            Return dt2.Rows(0).Item(0).ToString()
+            Return dt2.Rows(0).Item(0).ToString().TrimEnd()
 
 
         Catch ex As Exception
@@ -1996,6 +2004,12 @@ Module MainModule
         Dim sSql As String = String.Format("EXEC [dbo].[proc_EPSWEBMAIL_MENSAJES_NOTIFICACIONES_BULTOS] @TPL_EMAIL_ID = {0}, @DIAS = {1}", _
                                            TemplateID, Dias)
 
+
+        'Dim sSql2 As String = String.Format("EXEC [dbo].[proc_EPSWEBMAIL_MENSAJES_NOTIFICACIONES_BULTOS_MFR2] @TPL_EMAIL_ID = {0}, @DIAS = {1}", _
+        '                   TemplateID, Dias)
+
+
+
         Try
             Return db.ewGetDataSet(sSql)
         Catch ex As Exception
@@ -2149,14 +2163,14 @@ Module MainModule
         Dim nReturn As Integer = 0
 
         Dim oConn As New SqlConnection(db.GetConnectionString())
-         Dim oCmd2 As New SqlCommand
+        Dim oCmd2 As New SqlCommand
 
         With oCmd2
             .Connection = oConn
-            
+
             .CommandType = CommandType.Text
-            .CommandText="set ARITHABORT on"
-              End With
+            .CommandText = "set ARITHABORT on"
+        End With
         Dim oCmd As New SqlCommand
 
         With oCmd
@@ -2241,14 +2255,14 @@ Module MainModule
 
         Dim bReturn As Boolean = True
         Dim oConn As New SqlConnection(db.GetConnectionString)
-           Dim oCmd2 As New SqlCommand
+        Dim oCmd2 As New SqlCommand
 
         With oCmd2
             .Connection = oConn
-            
+
             .CommandType = CommandType.Text
-            .CommandText="set ARITHABORT on"
-              End With
+            .CommandText = "set ARITHABORT on"
+        End With
         Dim oCmd As New SqlCommand
 
         With oCmd
@@ -2339,14 +2353,14 @@ Module MainModule
         PrintDobleLine("- Procesando Mensajes de Notificaciones sin responder, por favor espere...")
 
         Dim oConn As New SqlConnection(db.GetConnectionString)
-           Dim oCmd2 As New SqlCommand
+        Dim oCmd2 As New SqlCommand
 
         With oCmd2
             .Connection = oConn
-            
+
             .CommandType = CommandType.Text
-            .CommandText="set ARITHABORT on"
-              End With
+            .CommandText = "set ARITHABORT on"
+        End With
         Dim oCmd As New SqlCommand
 
         With oCmd
@@ -2363,7 +2377,7 @@ Module MainModule
 
         Try
             oConn.Open()
-             oCmd2.ExecuteNonQuery()
+            oCmd2.ExecuteNonQuery()
             oCmd.ExecuteNonQuery()
         Catch ex As Exception
             Dim sEx As String = ex.Message.ToString
@@ -2667,6 +2681,9 @@ Module MainModule
     Private Function GetWebMailTemplateDataSet() As DataSet
 
         Dim sSql As String = "EXEC [dbo].[proc_EPSWEBMAIL_TEMPLATESLoadAll]"
+
+        'Dim ssql As String = "SELECT * FROM EPSWEBMAIL_TEMPLATES  WHERE TPL_EMAIL_ID = 3 "
+
 
         Try
             Return db.ewGetDataSet(sSql)
