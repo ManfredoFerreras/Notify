@@ -901,7 +901,7 @@ Module MainModule
                         If ProcessImpuestosAduanales(sNumeroEPS, sCodigoBarra, sCurEmailBoby) = False Then
                             bSendEmail = False
                         End If
-                    Case 3    'paquete sin factura aduana
+                    Case 3, 2    'paquete sin factura aduana
                         ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby)
                     Case Else
                         ' Do nothing
