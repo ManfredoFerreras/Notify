@@ -901,7 +901,7 @@ Module MainModule
                         If ProcessImpuestosAduanales(sNumeroEPS, sCodigoBarra, sCurEmailBoby) = False Then
                             bSendEmail = False
                         End If
-                    Case 3    'paquete sin factura aduana
+                    Case 3, 4   'paquete sin factura aduana
                         ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby)
                     Case Else
                         ' Do nothing
@@ -2045,6 +2045,11 @@ Module MainModule
 
         Dim condiciones(3) As String
 
+        condiciones(0) = ""
+        condiciones(1) = ""
+        condiciones(2) = ""
+
+
         Try
 
             For Each fila As DataRow In db.ewGetDataSet(sSql).Tables(0).Rows
@@ -2053,13 +2058,15 @@ Module MainModule
                 System.Diagnostics.Debug.WriteLine(fila("Condicion_2"))
                 condiciones(2) = fila("Condicion_3")
             Next
-            Return condiciones
+            'Return condiciones
         Catch ex As Exception
             Dim sEx As String = ex.Message.ToString
             PrintDobleLine("ERROR: " & sEx)
             ewErrorHandler.NotificaError("Se ha producido un error", "GetMensajesNotificacionesBultosDataSet(): " & sEx, 2)
-            Return Nothing
+            ' Return Nothing
         End Try
+        Return condiciones
+
     End Function
 
     ''' <summary>
