@@ -310,6 +310,10 @@ Module MainModule
 
                     Case "CLIENTES_CREDITO"
                         ProcessMensajesNotificacionesClientesCredito(nTemplateID, sEmailFormat, sEmailTo, sEmailCcList, sEmailBccList, sEmailFrom, sEmailFromName, sEmailReplyTo, sEmailSubject, sEmailBody, sNotificaRepresentantes)
+
+                    Case "CLIENTE_NUEVO"
+                        ProcessMensajesNotiClientesNuevo(nTemplateID, sEmailFormat, sEmailTo, sEmailCcList, sEmailBccList, sEmailFrom, sEmailFromName, sEmailReplyTo, sEmailSubject, sEmailBody, sNotificaRepresentantes)
+
                     Case Else ' CLIENTES
                         ProcessMensajesNotificacionesClientes(nTemplateID, sEmailFormat, sEmailTo, sEmailCcList, sEmailBccList, sEmailFrom, sEmailFromName, sEmailReplyTo, sEmailSubject, sEmailBody, sNotificaRepresentantes)
                 End Select
@@ -902,7 +906,9 @@ Module MainModule
                             bSendEmail = False
                         End If
                     Case 3, 4   'paquete sin factura aduana
-                        ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby)
+                        If ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby) = False Then
+                            bSendEmail = False
+                        End If
                     Case Else
                         ' Do nothing
                 End Select
@@ -954,9 +960,12 @@ Module MainModule
 
         Dim ds As New DataSet
         sKey = GetDatosSubirFacturaDataSet(NumeroEPS, CodigoBarra)
-
+        If sKey = Nothing Then
+            Return False
+        End If
         EmailBody = EmailBody.Replace("%RowId%", sKey)
 
+        Return True
 
     End Function
 
@@ -966,12 +975,16 @@ Module MainModule
         Dim dt2 As New DataTable()
 
 
-        Dim sSql = " SELECT C.BLT_NUMERO, ISNULL(BLT_CARRIER,' ') BLT_CARRIER ,BLT_VALOR_FOB, ISNULL(C.COB_CONTENIDO,' ') CONTENIDO , BLT_TRACKING_NUMBER" & _
-                 " FROM BULTOS B LEFT OUTER JOIN CONTENIDO_BULTOS C ON B.BLT_NUMERO = C.BLT_NUMERO " & _
+        Dim sSql = " SELECT B.BLT_NUMERO, ISNULL(BLT_CARRIER,' ') BLT_CARRIER ,ISNULL(BLT_VALOR_FOB,0) BLT_VALOR_FOB, ISNULL(C.COB_CONTENIDO,' ') CONTENIDO , BLT_TRACKING_NUMBER" & _
+                 " FROM BULTOS B INNER JOIN CONTENIDO_BULTOS C ON B.BLT_NUMERO = C.BLT_NUMERO " & _
                  " WHERE BLT_CODIGO_BARRA  = '" & CodigoBarra & "'"
 
         Try
             dt1 = db.ewGetDataSet(sSql).Tables(0)
+
+            If dt1.Rows.Count = 0 Then
+                Return Nothing
+            End If
 
             Dim sSql2 As String = "IF (SELECT COUNT(1) FROM  AVISO_FACT_CORREO " & _
                                   " WHERE BLT_CODIGO_BARRA =  '" & CodigoBarra & "')=0" & _
@@ -1791,6 +1804,208 @@ Module MainModule
 
     End Sub
 
+    Sub ProcessMensajesNotiClientesNuevo(ByVal TemplateID As Integer, _
+                                             ByVal EmailFormat As String, _
+                                             ByVal EmailTo As String, _
+                                             ByVal EmailCcList As String, _
+                                             ByVal EmailBccList As String, _
+                                             ByVal EmailFrom As String, _
+                                             ByVal EmailFromName As String, _
+                                             ByVal EmailReplyTo As String, _
+                                             ByVal EmailSubject As String, _
+                                             ByVal EmailBody As String, _
+                                             ByVal NotificaRepresentantes As String)
+
+        Dim sCurName As String = "Clientes"
+        Dim bSendEmail As Boolean = False
+
+        Dim sTmp As String = String.Empty
+        Dim sMessage As String = String.Empty
+
+        Dim sCurEmailTo As String = String.Empty
+        Dim sCurEmailSubject As String = String.Empty
+        Dim sCurEmailBoby As String = String.Empty
+        Dim sCurEmailAsesor As String = String.Empty
+
+        Dim nMensajeID As String = Nothing
+        Dim sMensajeGUID As String = Nothing
+        Dim sMensajeFechaCreado As String = Nothing
+
+        Dim sNumeroEPS As String = Nothing
+        Dim sNombreCompleto As String = Nothing
+        Dim sNombre As String = Nothing
+        Dim sApellido As String = Nothing
+        Dim sTipoClienteCodigo As String = Nothing
+        Dim sSubTipoClienteCodigo As String = Nothing
+        Dim sClienteEstado As String = Nothing
+        Dim sClienteEstatus As String = Nothing
+        Dim sCedula As String = Nothing
+        Dim sRNC As String = Nothing
+        Dim sPasaporte As String = Nothing
+        Dim sClienteEmail As String = Nothing
+        Dim sEnviarEmail As String = Nothing
+        Dim nCompaniaID As String = Nothing
+        Dim sSucursalCodigo As String = Nothing
+        Dim sAgenciaCodigo As String = Nothing
+        Dim sAgenciaEmail As String = Nothing
+        Dim sOficialCodigo As String = Nothing
+        Dim sOficialNombre As String = Nothing
+        Dim sAsesorCodigo As String = Nothing
+        Dim sAsesorNombre As String = Nothing
+        Dim sAsesorEmail As String = Nothing
+        Dim sClienteTieneCredito As String = Nothing
+        '
+        Dim sDireccion1 As String
+        Dim sDireccion2 As String
+        Dim sCodigoVoice As String
+
+
+        ' Validar si el mensaje es HTML
+        Dim bIsHtml As Boolean = IIf(EmailFormat.ToUpper.Trim = "HTML", True, False)
+
+        ' Desplegar mensaje
+        PrintDobleLine(String.Format("- Buscando notificaciones de {0} para enviar, por favor espere...", sCurName))
+
+        Try
+            ' Create a new DataSet Object to fill with Data
+            Dim ds As New DataSet
+            ds = GetMSGNotiCteNuevos(TemplateID, nAppProcesarDias)
+
+            ' Desplegar mensaje
+            PrintDobleLine(String.Format("- Procesando notificaciones de {0} para enviar...", sCurName))
+
+            Dim dr As DataRow
+            For Each dr In ds.Tables(0).Rows
+
+                ' Enviar correo
+                bSendEmail = True
+
+                ' Buscar los datos de la notificacion
+                '------------------------------------
+                nMensajeID = db.ewToString(dr("WMM_MENSAJE_ID"))
+                sMensajeGUID = db.ewToString(dr("WMM_MENSAJE_GUID"))
+                sMensajeFechaCreado = db.ewToString(dr("WMM_FECHA_CREADO"))
+
+                sNumeroEPS = db.ewToStringUpper(dr("CTE_NUMERO_EPS"))
+                sNombreCompleto = db.ewToStringUpper(dr("NOMBRE_COMPLETO"))
+                sNombre = db.ewToStringUpper(dr("CTE_NOMBRE"))
+                sApellido = db.ewToStringUpper(dr("CTE_APELLIDO"))
+
+                sTipoClienteCodigo = db.ewToStringUpper(dr("CTE_TIPO"))
+
+             
+                sClienteEmail = db.ewToStringLower(dr("CTE_EMAIL"))
+
+                nCompaniaID = db.ewToString(dr("COM_CODIGO"))
+                sSucursalCodigo = db.ewToStringUpper(dr("SUC_CODIGO"))
+                sAgenciaCodigo = db.ewToStringUpper(dr("AGE_CODIGO"))
+                sAgenciaEmail = db.ewToStringLower(dr("AGENCIA_EMAIL"))
+
+                sCodigoVoice = db.ewToStringLower(dr("CTE_CODIGO_VOICE"))
+                Dim sCorreoAgencia As String = db.ewToStringLower(dr("AGENCIA_EMAIL"))
+                Dim sTelefonoAgencia As String = db.ewToStringLower(dr("AGE_TELEFONO"))
+
+
+                ' ag.AGE_DIREC_POBOX_IND,
+                ' ag.AGE_DIREC_PAQ_IND,
+                ' ag.AGE_DIREC_POBOX_CORP,
+                ' ag.AGE_DIREC_PAQ_CORP,
+                ' vc.CTE_CODIGO_VOICE,
+                         
+
+                ' Buscar dirección de envio del mensaje
+                '------------------------------------------------------------------------
+                sCurEmailTo = ProcessSendToEmailAddressList(EmailTo, EmailCcList, EmailBccList, sClienteEmail, sCurEmailAsesor)
+
+                ' Crear el asunto del mensaje a enviar
+                '------------------------------------------------------------------------
+                sCurEmailSubject = EmailSubject
+
+                ' Formatear cuerpo del mensaje a enviar
+                '------------------------------------------------------------------------
+                sCurEmailBoby = EmailBody
+
+                ' Formatear Template Datos Generales
+                FormatTemplateTextDatosGenerales(sCurEmailBoby, TemplateID, bIsHtml, dr)
+
+                FormatTemplateText(sCurEmailBoby, "EMAIL_FROM", EmailFrom)
+
+                If sTipoClienteCodigo = "I" Then
+                    Dim stmpDireccion As String = db.ewToStringLower(dr("AGE_DIREC_POBOX_IND"))
+                    Dim aDir() As String = stmpDireccion.Split(Chr(10))
+
+                    sDireccion1 = aDir(0)
+                    sDireccion2 = aDir(2)
+
+
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C1", sDireccion1)
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C2", sDireccion2)
+
+                    stmpDireccion = db.ewToStringLower(dr("AGE_DIREC_PAQ_IND"))
+                    aDir = stmpDireccion.Split(Chr(10))
+
+                    sDireccion1 = aDir(0)
+                    sDireccion2 = aDir(2)
+
+
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION1", sDireccion1)
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION2", sDireccion2)
+
+                Else
+
+                    Dim stmpDireccion As String = db.ewToStringLower(dr("AGE_DIREC_POBOX_CORP"))
+                    Dim aDir() As String = stmpDireccion.Split(Chr(10))
+
+                    sDireccion1 = aDir(0)
+                    sDireccion2 = aDir(2)
+
+
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C1", sDireccion1)
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C2", sDireccion2)
+
+                    stmpDireccion = db.ewToStringLower(dr("AGE_DIREC_PAQ_CORP"))
+                    aDir = stmpDireccion.Split(Chr(10))
+
+                    sDireccion1 = aDir(0)
+                    sDireccion2 = aDir(2)
+
+
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION1", sDireccion1)
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION2", sDireccion2)
+
+
+                End If
+
+
+                FormatTemplateText(sCurEmailBoby, "TELEFONO_AGENCIA", sTelefonoAgencia)
+                FormatTemplateText(sCurEmailBoby, "CODIGO_VOICE", sCodigoVoice)
+                FormatTemplateText(sCurEmailBoby, "CORREO_AGENCIA", sCorreoAgencia)
+                FormatTemplateText(sCurEmailBoby, "NOMBRE_COMPLETO", sNombreCompleto)
+                FormatTemplateText(sCurEmailBoby, "NOMBRE_COMPLETO", sNombreCompleto)
+                FormatTemplateText(sCurEmailBoby, "CLIENTE_NOMBRE", sNombre)
+                FormatTemplateText(sCurEmailBoby, "CLIENTE_APELLIDO", sApellido)
+
+
+
+                ' Enviar el correo electrónico
+                '------------------------------------------------------------------------
+                SendEmail(TemplateID, EmailFormat, EmailTo, EmailFrom, EmailFromName, EmailFrom, sCurEmailSubject, sCurEmailBoby, bSendEmail, dr)
+
+                ' Incrementar contador de registros procesados
+                nRecCount += 1
+            Next
+
+            ' Desplegar mensaje que no existe email para procesar
+            If nRecCount = 0 Then PrintDobleLine(String.Format("> No existen notificaciones de {0} para enviar", sCurName))
+
+        Catch ex As Exception
+            Dim sEx As String = ex.Message.ToString
+            PrintDobleLine("ERROR: " & sEx)
+            ewErrorHandler.NotificaError("Se ha producido un error", "ProcessMensajesNotificacionesClientes(): " & sEx, 2)
+        End Try
+
+    End Sub
+
     ''' <summary>
     ''' Procesar Mensajes de Notificaciones para Clientes Credito
     ''' </summary>
@@ -2040,7 +2255,9 @@ Module MainModule
     End Function
 
     Public Function GetCondiciones(ByVal bltCodBarra As String, ByVal bltTrackingNumber As String) As String()
-        Dim sSql As String = String.Format("EXEC [dbo].[proc_InfoBultos4_P] '{0}', '{1}'", _
+        'proc_InfoBultos_mfr2
+        'proc_InfoBultos4_P
+        Dim sSql As String = String.Format("EXEC [dbo].[proc_InfoBultos_mfr2] '{0}', '{1}'", _
                                          bltCodBarra, bltTrackingNumber)
 
         Dim condiciones(3) As String
@@ -2114,6 +2331,24 @@ Module MainModule
         End Try
 
     End Function
+
+
+    Private Function GetMSGNotiCteNuevos(ByVal TemplateID As Integer, ByVal Dias As Integer) As DataSet
+
+        Dim sSql As String = String.Format("EXEC [dbo].proc_EPSWEBMAIL_MSG_NOTI_CTE_NUEVOS @TPL_EMAIL_ID = {0}, @DIAS = {1}", _
+                                           TemplateID, Dias)
+
+        Try
+            Return db.ewGetDataSet(sSql)
+        Catch ex As Exception
+            Dim sEx As String = ex.Message.ToString
+            PrintDobleLine("ERROR: " & sEx)
+            ewErrorHandler.NotificaError("Se ha producido un error", "GetMensajesNotificacionesClientesDataSet(): " & sEx, 2)
+            Return Nothing
+        End Try
+
+    End Function
+
 
 #End Region
 
@@ -2674,6 +2909,9 @@ Module MainModule
     Private Function GetWebMailTemplateDataSet() As DataSet
 
         Dim sSql As String = "EXEC [dbo].[proc_EPSWEBMAIL_TEMPLATESLoadAll]"
+
+        '  sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 36 "
+
 
         Try
             Return db.ewGetDataSet(sSql)
