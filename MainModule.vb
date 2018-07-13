@@ -1930,28 +1930,7 @@ Module MainModule
 
                 FormatTemplateText(sCurEmailBoby, "EMAIL_FROM", EmailFrom)
 
-                If sTipoClienteCodigo = "I" Then
-                    Dim stmpDireccion As String = db.ewToStringLower(dr("AGE_DIREC_POBOX_IND"))
-                    Dim aDir() As String = stmpDireccion.Split(Chr(10))
-
-                    sDireccion1 = aDir(0)
-                    sDireccion2 = aDir(2)
-
-
-                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C1", sDireccion1)
-                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C2", sDireccion2)
-
-                    stmpDireccion = db.ewToStringLower(dr("AGE_DIREC_PAQ_IND"))
-                    aDir = stmpDireccion.Split(Chr(10))
-
-                    sDireccion1 = aDir(0)
-                    sDireccion2 = aDir(2)
-
-
-                    FormatTemplateText(sCurEmailBoby, "DIRECCION1", sDireccion1)
-                    FormatTemplateText(sCurEmailBoby, "DIRECCION2", sDireccion2)
-
-                Else
+                If sTipoClienteCodigo = "C" Then
 
                     Dim stmpDireccion As String = db.ewToStringLower(dr("AGE_DIREC_POBOX_CORP"))
                     Dim aDir() As String = stmpDireccion.Split(Chr(10))
@@ -1974,6 +1953,30 @@ Module MainModule
                     FormatTemplateText(sCurEmailBoby, "DIRECCION2", sDireccion2)
 
 
+                Else
+                    Dim stmpDireccion As String = db.ewToStringLower(dr("AGE_DIREC_POBOX_IND"))
+                    Dim aDir() As String = stmpDireccion.Split(Chr(10))
+
+                    sDireccion1 = aDir(0)
+                    sDireccion2 = aDir(2)
+
+
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C1", sDireccion1)
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION_C2", sDireccion2)
+
+                    stmpDireccion = db.ewToStringLower(dr("AGE_DIREC_PAQ_IND"))
+                    aDir = stmpDireccion.Split(Chr(10))
+
+                    sDireccion1 = aDir(0)
+                    sDireccion2 = aDir(2)
+
+
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION1", sDireccion1)
+                    FormatTemplateText(sCurEmailBoby, "DIRECCION2", sDireccion2)
+
+
+
+
                 End If
 
 
@@ -1989,7 +1992,7 @@ Module MainModule
 
                 ' Enviar el correo electrónico
                 '------------------------------------------------------------------------
-                SendEmail(TemplateID, EmailFormat, EmailTo, EmailFrom, EmailFromName, EmailFrom, sCurEmailSubject, sCurEmailBoby, bSendEmail, dr)
+                SendEmail(TemplateID, EmailFormat, sCurEmailTo, EmailFrom, EmailFromName, EmailFrom, sCurEmailSubject, sCurEmailBoby, bSendEmail, dr)
 
                 ' Incrementar contador de registros procesados
                 nRecCount += 1
@@ -2910,7 +2913,7 @@ Module MainModule
 
         Dim sSql As String = "EXEC [dbo].[proc_EPSWEBMAIL_TEMPLATESLoadAll]"
 
-        '  sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 36 "
+        ' Dim sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 3 "
 
 
         Try
