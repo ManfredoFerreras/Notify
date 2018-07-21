@@ -307,6 +307,9 @@ Module MainModule
                         'ProcessMensajesNotificacionesBultosEra(nTemplateID, sEmailFormat, sEmailTo, sEmailCcList, sEmailBccList, sEmailFrom, sEmailFromName, sEmailReplyTo, sEmailSubject, sEmailBody, sNotificaRepresentantes)
                         ' Procesar mensajes de notificaciones sin responder por templates
                         If sActualizaMensajes = "S" Then UpdateWebMailNotificacionesSinResponder(nTemplateID, nAppProcesarDias)
+                    Case "CARGA_AEREA"
+                        ProcessMensajesNotificacionesBultosCargaAerea(nTemplateID, sEmailFormat, sEmailTo, sEmailCcList, sEmailBccList, sEmailFrom, sEmailFromName, sEmailReplyTo, sEmailSubject, sEmailBody, sNotificaRepresentantes)
+
 
                     Case "CLIENTES_CREDITO"
                         ProcessMensajesNotificacionesClientesCredito(nTemplateID, sEmailFormat, sEmailTo, sEmailCcList, sEmailBccList, sEmailFrom, sEmailFromName, sEmailReplyTo, sEmailSubject, sEmailBody, sNotificaRepresentantes)
@@ -952,6 +955,336 @@ Module MainModule
         End Try
 
     End Sub
+
+
+    Sub ProcessMensajesNotificacionesBultosCargaAerea(ByVal TemplateID As Integer, _
+                                          ByVal EmailFormat As String, _
+                                          ByVal EmailTo As String, _
+                                          ByVal EmailCcList As String, _
+                                          ByVal EmailBccList As String, _
+                                          ByVal EmailFrom As String, _
+                                          ByVal EmailFromName As String, _
+                                          ByVal EmailReplyTo As String, _
+                                          ByVal EmailSubject As String, _
+                                          ByVal EmailBody As String, _
+                                          ByVal NotificaRepresentantes As String)
+
+        Dim sCurName As String = "Paquete o Bulto"
+        Dim bSendEmail As Boolean = False
+
+        Dim sTmp As String = String.Empty
+        Dim sMessage As String = String.Empty
+
+        Dim sCurEmailTo As String = String.Empty
+        Dim sCurEmailSubject As String = String.Empty
+        Dim sCurEmailBoby As String = String.Empty
+        Dim sCurEmailAsesor As String = String.Empty
+
+        Dim nMensajeID As String = Nothing
+        Dim sMensajeGUID As String = Nothing
+        Dim sMensajeFechaCreado As String = Nothing
+
+        Dim sNumeroEPS As String = Nothing
+        Dim sNombreCompleto As String = Nothing
+        Dim sTipoClienteCodigo As String = Nothing
+        Dim sSubTipoClienteCodigo As String = Nothing
+        Dim sClienteEstado As String = Nothing
+        Dim sClienteEstatus As String = Nothing
+        Dim sCedula As String = Nothing
+        Dim sRNC As String = Nothing
+        Dim sPasaporte As String = Nothing
+        Dim sClienteEmail As String = Nothing
+        Dim sEnviarEmail As String = Nothing
+        Dim nCompaniaID As String = Nothing
+        Dim sSucursalCodigo As String = Nothing
+        Dim sAgenciaCodigo As String = Nothing
+        Dim sAgenciaEmail As String = Nothing
+        Dim sOficialCodigo As String = Nothing
+        Dim sOficialNombre As String = Nothing
+        Dim sAsesorCodigo As String = Nothing
+        Dim sAsesorNombre As String = Nothing
+        Dim sAsesorEmail As String = Nothing
+        Dim sClienteTieneCredito As String = Nothing
+        Dim sClienteTieneCorrespondecia As String = Nothing
+
+        Dim nBultoNumero As String = Nothing
+        Dim sCodigoBarra As String = Nothing
+        Dim sTrackingNumber As String = Nothing
+        Dim sGuiaHija As String = Nothing
+        Dim sGuiaMadre As String = Nothing
+        Dim sManifiesto As String = Nothing
+        Dim sServicioCodigo As String = Nothing
+        Dim sServicio As String = Nothing
+        Dim sOrigen As String = Nothing
+        Dim sOrdenNo As String = Nothing
+        Dim sFacturaNo As String = Nothing
+        Dim sFechaRecepcion As String = Nothing
+        Dim nPiezas As String = Nothing
+        Dim nPeso As String = Nothing
+        Dim sContenido As String = Nothing
+        Dim sRemitente As String = Nothing
+        Dim sDestinatario As String = Nothing
+        Dim sLocalizacion As String = Nothing
+        Dim sCondicionPrimera As String = Nothing
+        Dim bDocumentoDisponible As Boolean = Nothing
+        Dim sDocumentoReferencia As String = Nothing
+        Dim sNumeroEPSTemp As String = Nothing
+        Dim sLista As String = Nothing
+
+
+
+        ' Validar si el mensaje es HTML
+        Dim bIsHtml As Boolean = IIf(EmailFormat.ToUpper.Trim = "HTML", True, False)
+
+        ' Desplegar mensaje
+        PrintDobleLine(String.Format("- Buscando notificaciones {0} para enviar, por favor espere...", sCurName))
+
+        Try
+            ' Create a new DataSet Object to fill with Data
+            Dim ds As New DataSet
+            ds = GetMensajesNotificacionesBultosDataSet(TemplateID, nAppProcesarDias)
+
+            ' Desplegar mensaje
+            PrintDobleLine(String.Format("- Procesando notificaciones de {0} para enviar...", sCurName))
+            nRecCount = 0
+            Dim dr As DataRow
+            For Each dr In ds.Tables(0).Rows
+               
+                sNumeroEPS = db.ewToStringUpper(dr("CTE_NUMERO_EPS"))
+
+                If nRecCount = 0 Then
+                    sNumeroEPSTemp = db.ewToStringUpper(dr("CTE_NUMERO_EPS"))
+                End If
+
+                If sNumeroEPS <> sNumeroEPSTemp Then
+
+                    FormatTemplateText(sCurEmailBoby, "CODIGOS", sLista)
+
+                    SendEmail(TemplateID, EmailFormat, sCurEmailTo, EmailFrom, EmailFromName, EmailReplyTo, sCurEmailSubject & "--", sCurEmailBoby, bSendEmail, dr)
+                    ' Incrementar contador de registros procesados
+
+                    sLista = ""
+                    sNumeroEPSTemp = db.ewToStringUpper(dr("CTE_NUMERO_EPS"))
+                Else
+                    UpdateWebMailMensajesEnviado(nMensajeID, "S")
+                End If
+
+                ' Enviar correo
+                bSendEmail = True
+
+                ' Buscar los datos de la notificacion
+                '------------------------------------
+                nMensajeID = db.ewToString(dr("WMM_MENSAJE_ID"))
+                sMensajeGUID = db.ewToString(dr("WMM_MENSAJE_GUID"))
+                sMensajeFechaCreado = db.ewToString(dr("WMM_FECHA_CREADO"))
+
+
+                sNombreCompleto = db.ewToStringUpper(dr("NOMBRE_COMPLETO"))
+                sTipoClienteCodigo = db.ewToStringUpper(dr("CTE_TIPO"))
+                sSubTipoClienteCodigo = db.ewToStringUpper(dr("STC_CODIGO"))
+                sClienteEstado = db.ewToStringUpper(dr("CTE_ESTADO"))
+                sClienteEstatus = db.ewToStringUpper(dr("ESTATUS"))
+                sCedula = db.ewToString(dr("CTE_CEDULA"))
+                sRNC = db.ewToString(dr("CTE_RNC"))
+                sPasaporte = db.ewToString(dr("CTE_PASAPORTE"))
+                sClienteEmail = db.ewToStringLower(dr("CTE_EMAIL"))
+                sEnviarEmail = db.ewToStringUpper(dr("CTE_ENVIAR_EMAIL"))
+                nCompaniaID = db.ewToString(dr("COM_CODIGO"))
+                sSucursalCodigo = db.ewToStringUpper(dr("SUC_CODIGO"))
+                sAgenciaCodigo = db.ewToStringUpper(dr("AGE_CODIGO"))
+                sAgenciaEmail = db.ewToStringLower(dr("AGENCIA_EMAIL"))
+                sOficialCodigo = db.ewToStringUpper(dr("CTE_VENDEDOR"))
+                sOficialNombre = db.ewToStringUpper(dr("OFICIAL"))
+                sAsesorCodigo = db.ewToStringUpper(dr("RES_CODIGO"))
+                sAsesorNombre = db.ewToStringUpper(dr("ASESOR"))
+                sAsesorEmail = db.ewToStringLower(dr("ASESOR_EMAIL"))
+                sClienteTieneCredito = db.ewToStringUpper(dr("CTE_CREDITO"))
+                sClienteTieneCorrespondecia = db.ewToStringUpper(dr("CTE_CORRESPONDENCIA"))
+
+                nBultoNumero = db.ewToString(dr("BLT_NUMERO"))
+                sCodigoBarra = db.ewToStringUpper(dr("BLT_CODIGO_BARRA"))
+                sTrackingNumber = db.ewToStringUpper(dr("BLT_TRACKING_NUMBER"))
+                sGuiaHija = db.ewToStringUpper(dr("BLT_GUIA_HIJA"))
+                sGuiaMadre = db.ewToStringUpper(dr("MAN_GUIA"))
+                sManifiesto = db.ewToStringUpper(dr("MAN_MANIFIESTO"))
+                sServicioCodigo = db.ewToStringUpper(dr("PRO_CODIGO"))
+                sServicio = db.ewToStringUpper(dr("PRO_DESCRIPCION"))
+                sOrigen = db.ewToStringUpper(dr("ORIGEN"))
+                sOrdenNo = db.ewToStringUpper(dr("BLT_PONUMBER"))
+                sFacturaNo = db.ewToStringUpper(dr("BLT_FACTURA_SUPLIDOR"))
+                sFechaRecepcion = db.ewToString(dr("BLT_FECHA_RECEPCION"))
+                nPiezas = db.ewToString(dr("BLT_PIEZAS"))
+                nPeso = db.ewToString(dr("BLT_PESO"))
+                sContenido = db.ewToStringUpper(dr("CONTENIDO"))
+                sRemitente = db.ewToStringUpper(dr("REMITENTE"))
+                sDestinatario = db.ewToStringUpper(dr("DESTINATARIO"))
+                sLocalizacion = db.ewToStringUpper(dr("LOCALIZACION"))
+                ' sCondicion = db.ewToStringUpper(dr("CONDICION"))
+
+                Dim condiciones = GetCondiciones(sCodigoBarra, sTrackingNumber)
+
+                sCondicionPrimera = db.ewToStringUpper(condiciones(0))
+
+
+                'If (condiciones(1) <> Nothing) Then
+                '    ' sCondicionSeg = db.ewToStringUpper(condiciones(1))
+                '    ProcessApplicationByTemplatesDa()
+                'End If
+
+                'If (condiciones(2) <> Nothing) Then
+                '    ' sCondicionTerc = db.ewToStringUpper(condiciones(2))
+                '    ProcessApplicationByTemplatesEra()
+                'End If
+
+                bDocumentoDisponible = db.ewToBool(dr("DOC_DISPONIBLE"))
+                sDocumentoReferencia = db.ewToStringNullable(dr("DOC_REFERENCIA"))
+
+                ' SetUp Cliente
+                ' -------------
+                SetUpClienteOficial(sOficialCodigo, sOficialNombre, sSucursalCodigo, sAgenciaCodigo)
+                SetUpClienteAsesor(sAsesorCodigo, sAsesorNombre, sAsesorEmail, sSucursalCodigo, sAgenciaCodigo)
+                If NotificaRepresentantes = "S" Then sCurEmailAsesor = sAsesorEmail ' Enviar notificacion al asesor de la cuenta
+
+                ' HTML Encoding
+                '--------------
+                If bIsHtml = True Then
+                    If Not String.IsNullOrEmpty(sContenido) Then sContenido = ew_EncodeText(sContenido)
+                    If Not String.IsNullOrEmpty(sRemitente) Then sRemitente = ew_EncodeText(sRemitente)
+                    If Not String.IsNullOrEmpty(sDestinatario) Then sDestinatario = ew_EncodeText(sDestinatario)
+                End If
+
+                ' Set Default Values
+                '-------------------
+                If String.IsNullOrEmpty(sContenido) = True Then sContenido = "N/A"
+                If String.IsNullOrEmpty(sRemitente) = True Then sRemitente = "N/A"
+                If String.IsNullOrEmpty(sDestinatario) = True Then sDestinatario = "N/A"
+
+                ' Buscar dirección de envio del mensaje
+                '------------------------------------------------------------------------
+                sCurEmailTo = ProcessSendToEmailAddressList(EmailTo, EmailCcList, EmailBccList, sClienteEmail, sCurEmailAsesor)
+
+                ' Crear el asunto del mensaje a enviar
+                '------------------------------------------------------------------------
+                sCurEmailSubject = EmailSubject
+
+                FormatTemplateText(sCurEmailSubject, "EPS", sNumeroEPS)
+                FormatTemplateText(sCurEmailSubject, "NUMERO_EPS", sNumeroEPS)
+                FormatTemplateText(sCurEmailSubject, "CTE_NUMERO_EPS", sNumeroEPS)
+
+                FormatTemplateText(sCurEmailSubject, "CODIGO_BARRA", sCodigoBarra)
+                FormatTemplateText(sCurEmailSubject, "BLT_CODIGO_BARRA", sCodigoBarra)
+
+                sLista += "<li>" & sCodigoBarra & "\" & sGuiaHija & "</li>"
+
+                FormatTemplateText(sCurEmailSubject, "TRACKING_NUMBER", sTrackingNumber)
+                FormatTemplateText(sCurEmailSubject, "BLT_TRACKING_NUMBER", sTrackingNumber)
+
+                ' Formatear cuerpo del mensaje a enviar
+                '------------------------------------------------------------------------
+                sCurEmailBoby = EmailBody
+
+                ' Formatear Template Datos Generales
+                FormatTemplateTextDatosGenerales(sCurEmailBoby, TemplateID, bIsHtml, dr)
+
+                FormatTemplateText(sCurEmailBoby, "EMAIL_FROM", EmailFrom)
+
+                ' Paquete o bulto codigo de barra
+                FormatTemplateText(sCurEmailBoby, "CODIGO_BARRA", sCodigoBarra)
+                FormatTemplateText(sCurEmailBoby, "BLT_CODIGO_BARRA", sCodigoBarra)
+
+                ' Paquete o bulto tracking number
+                FormatTemplateText(sCurEmailBoby, "TRACKING_NUMBER", sTrackingNumber)
+                FormatTemplateText(sCurEmailBoby, "BLT_TRACKING_NUMBER", sTrackingNumber)
+
+                ' Paquete o bulto guia hija
+                FormatTemplateText(sCurEmailBoby, "GUIA_HIJA", sGuiaHija)
+                FormatTemplateText(sCurEmailBoby, "BLT_GUIA_HIJA", sGuiaHija)
+
+                ' Paquete o bulto guia madre
+                FormatTemplateText(sCurEmailBoby, "MAN_GUIA", sGuiaMadre)
+
+                ' Paquete o bulto manifiesto
+                FormatTemplateText(sCurEmailBoby, "MAN_MANIFIESTO", sManifiesto)
+
+                ' Paquete o bulto servicio codigo y descripcion
+                FormatTemplateText(sCurEmailBoby, "PRO_CODIGO", sServicioCodigo)
+                FormatTemplateText(sCurEmailBoby, "PRO_DESCRIPCION", sServicio)
+                FormatTemplateText(sCurEmailBoby, "PRODUCTO", sServicio)
+                FormatTemplateText(sCurEmailBoby, "SERVICIO", sServicio)
+
+                ' Paquete o bulto origen codigo y descripcion
+                FormatTemplateText(sCurEmailBoby, "ORI_CODIGO", sOrigen)
+                FormatTemplateText(sCurEmailBoby, "ORIGEN", sOrigen)
+
+                ' Paquete o bulto orden numero
+                FormatTemplateText(sCurEmailBoby, "BLT_PONUMBER", sOrdenNo)
+                FormatTemplateText(sCurEmailBoby, "PONUMBER", sOrdenNo)
+                FormatTemplateText(sCurEmailBoby, "ORDEN_NO", sOrdenNo)
+
+                ' Paquete o bulto factura numero del suplidor
+                FormatTemplateText(sCurEmailBoby, "BLT_FACTURA_SUPLIDOR", sFacturaNo)
+                FormatTemplateText(sCurEmailBoby, "FACTURA_SUPLIDOR", sFacturaNo)
+                FormatTemplateText(sCurEmailBoby, "FACTURA_NO", sFacturaNo)
+
+                ' Paquete o bulto fecha de recepcion
+                FormatTemplateText(sCurEmailBoby, "BLT_FECHA_RECEPCION", sFechaRecepcion)
+                FormatTemplateText(sCurEmailBoby, "FECHA_RECEPCION", sFechaRecepcion)
+
+                ' Paquete o bulto piezas
+                FormatTemplateText(sCurEmailBoby, "BLT_PIEZAS", nPiezas)
+                FormatTemplateText(sCurEmailBoby, "PIEZAS", nPiezas)
+
+                ' Paquete o bulto peso
+                FormatTemplateText(sCurEmailBoby, "BLT_PESO", nPeso)
+                FormatTemplateText(sCurEmailBoby, "PESO", nPeso)
+
+                ' Paquete o bulto contenido
+                FormatTemplateText(sCurEmailBoby, "CONTENIDO", sContenido)
+
+                ' Paquete o bulto remitente
+                FormatTemplateText(sCurEmailBoby, "SUPLIDOR", sRemitente)
+                FormatTemplateText(sCurEmailBoby, "REMITENTE", sRemitente)
+
+                ' Paquete o bulto destinatario
+                FormatTemplateText(sCurEmailBoby, "DESTINATARIO", sDestinatario)
+
+                ' Paquete o bulto localizacion
+                FormatTemplateText(sCurEmailBoby, "LOCALIZACION", sLocalizacion)
+
+                ' Paquete o bulto condicion
+                FormatTemplateText(sCurEmailBoby, "CONDICION", sCondicionPrimera)
+
+                ' Enviar el correo electrónico
+                '------------------------------------------------------------------------
+
+                nRecCount += 1
+
+            Next
+
+            If sLista <> "" Then
+
+                FormatTemplateText(sCurEmailBoby, "CODIGOS", sLista)
+
+                SendEmail(TemplateID, EmailFormat, sCurEmailTo, EmailFrom, EmailFromName, EmailReplyTo, sCurEmailSubject & "--", sCurEmailBoby, bSendEmail, dr)
+                ' Incrementar contador de registros procesados
+
+                sLista = ""
+                sNumeroEPSTemp = db.ewToStringUpper(dr("CTE_NUMERO_EPS"))
+            Else
+                UpdateWebMailMensajesEnviado(nMensajeID, "S")
+            End If
+
+            ' Desplegar mensaje que no existe email para procesar
+            If nRecCount = 0 Then PrintDobleLine(String.Format("> No existen notificaciones de {0} para enviar", sCurName))
+
+        Catch ex As Exception
+            Dim sEx As String = ex.Message.ToString
+            PrintDobleLine("ERROR: " & sEx)
+            ewErrorHandler.NotificaError("Se ha producido un error", "ProcessMensajesNotificacionesBultos(): " & sEx, 2)
+        End Try
+
+    End Sub
+
 
     Private Function ProcesaLinkSubirFactura(ByVal NumeroEPS As String, ByVal CodigoBarra As String, ByRef EmailBody As String) As Boolean
         Dim bReturn As Boolean = False
@@ -2925,6 +3258,8 @@ Module MainModule
     Private Function GetWebMailTemplateDataSet() As DataSet
 
         Dim sSql As String = "EXEC [dbo].[proc_EPSWEBMAIL_TEMPLATESLoadAll]"
+
+        ' sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 26"
 
         Try
             Return db.ewGetDataSet(sSql)
