@@ -910,7 +910,9 @@ Module MainModule
                         End If
 
                     Case 3, 4   'paquete sin factura aduana
-                        ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby)
+                        If ProcesaLinkSubirFactura(sNumeroEPS, sCodigoBarra, sCurEmailBoby) = False Then
+                            bSendEmail = False
+                        End If
 
                     Case Else
                         ' Do nothing
@@ -1316,7 +1318,7 @@ Module MainModule
 
 
         Dim sSql = " SELECT C.BLT_NUMERO, ISNULL(BLT_CARRIER,' ') BLT_CARRIER ,BLT_VALOR_FOB, ISNULL(C.COB_CONTENIDO,' ') CONTENIDO , BLT_TRACKING_NUMBER" & _
-                 " FROM BULTOS B LEFT OUTER JOIN CONTENIDO_BULTOS C ON B.BLT_NUMERO = C.BLT_NUMERO " & _
+                 " FROM BULTOS B INNER JOIN CONTENIDO_BULTOS C ON B.BLT_NUMERO = C.BLT_NUMERO " & _
                  " WHERE BLT_CODIGO_BARRA  = '" & CodigoBarra & "'"
 
         Try
@@ -3258,8 +3260,8 @@ Module MainModule
     Private Function GetWebMailTemplateDataSet() As DataSet
 
         Dim sSql As String = "EXEC [dbo].[proc_EPSWEBMAIL_TEMPLATESLoadAll]"
-
-        ' sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 26"
+        'QUITAR
+        'sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 3"
 
         Try
             Return db.ewGetDataSet(sSql)
