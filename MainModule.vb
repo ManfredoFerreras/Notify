@@ -1176,7 +1176,7 @@ Module MainModule
                 FormatTemplateText(sCurEmailSubject, "CODIGO_BARRA", sCodigoBarra)
                 FormatTemplateText(sCurEmailSubject, "BLT_CODIGO_BARRA", sCodigoBarra)
 
-                sLista += "<li>" & sCodigoBarra & "\" & sGuiaHija & "</li>"
+                sLista += "<li>" & sCodigoBarra & "\" & sGuiaHija & "[" & sRemitente & "]" & "</li>"
 
                 FormatTemplateText(sCurEmailSubject, "TRACKING_NUMBER", sTrackingNumber)
                 FormatTemplateText(sCurEmailSubject, "BLT_TRACKING_NUMBER", sTrackingNumber)
@@ -3261,7 +3261,7 @@ Module MainModule
 
         Dim sSql As String = "EXEC [dbo].[proc_EPSWEBMAIL_TEMPLATESLoadAll]"
         'QUITAR
-        'sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 3"
+        '   sSql = "SELECT * FROM EPSWEBMAIL_TEMPLATES WHERE TPL_EMAIL_ID = 26"
 
         Try
             Return db.ewGetDataSet(sSql)
